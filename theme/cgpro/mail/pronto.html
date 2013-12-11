@@ -1,9 +1,8 @@
 <cpanelfeature cgpro_pronto_html5>
-<!-- <?cp CommuniGate::checkSSLlinks() ?> -->
 <script type="text/javascript">
-  document.location.href = "http<cpanelif $CPVAR{'ssllinks'}>s</cpanelif>://<cpanel print="$CPVAR{'CGPServer'}">:<cpanelif $CPVAR{'ssllinks'}>9100</cpanelif><cpanelif !$CPVAR{'ssllinks'}>8100</cpanelif>/?Skin=hPronto-#pronto-login"; 
+  document.location.href = "http<cpanelif $ENV{'SERVER_PORT'}==2083>s</cpanelif>://pronto.cmailpro.net/"; 
 </script>
 <noscript>
-<a href="http<cpanelif $CPVAR{'ssllinks'}>s</cpanelif>://<cpanel print="$ENV{'HTTP_HOST'}">:<cpanelif $CPVAR{'ssllinks'}>9100</cpanelif><cpanelif !$CPVAR{'ssllinks'}>8100</cpanelif>/?Skin=hPronto-#pronto-login">Click here if not redirected.</a>
+<a href="http<cpanelif $ENV{'SERVER_PORT'}==2083>s</cpanelif>://pronto.cmailpro.net/">Click here if not redirected.</a>
 </noscript>
 </cpanelfeature>

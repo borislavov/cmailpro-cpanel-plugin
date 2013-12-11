@@ -9,7 +9,8 @@ tar -xvf ${PACKSRC}/webmail-distro.tgz
 cd ${PACKSRC}/webmail/
 rm -f ${PACKSRC}/webmail/itoolabs_webmail.cpanelplugin
 mv ${PACKSRC}/webmail/itoolabs_webmail.cpanelplugin_template ${PACKSRC}/webmail/itoolabs_webmail.cpanelplugin
-replace "url:https://91.215.218.251:9100" "url:https://${HOSTNAME}:9100" -- ${PACKSRC}/webmail/itoolabs_webmail.cpanelplugin
+replace "url:https://91.215.218.251:9100" "url:cgpro/energy.html" -- ${PACKSRC}/webmail/itoolabs_webmail.cpanelplugin
+replace "itemdesc:Energy HTML5 Webmail" "itemdesc:Energy Webmail" -- ${PACKSRC}/webmail/itoolabs_webmail.cpanelplugin
 sh ${PACKSRC}/webmail/install.sh
 rm -rf ${PACKSRC}/webmail/
 rm -rf ${PACKSRC}/webmail-distro.tgz
