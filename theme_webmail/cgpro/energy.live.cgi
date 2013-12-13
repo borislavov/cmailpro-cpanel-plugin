@@ -6,38 +6,20 @@
 use Cpanel::LiveAPI ();
 use CGI;
 use Cpanel::CPAN::MIME::Base64::Perl qw(decode_base64);
-use Cpanel::Wrap;
 my $q = CGI->new;
 
 my $cpanel = Cpanel::LiveAPI->new();
 print "Content-type: text/html\r\n\r\n";
-use Data::Dumper;
-my $result = Cpanel::Wrap::send_cpwrapd_request(
-    'namespace' => 'CGPro',
-    'module'    => 'cca',
-    'function'  => 'GETLOGIN',
-    'data' =>  `whoami`
-    );
-if ( defined( $result->{'data'} ) ) {
-    $loginData = $result->{'data'};
-} else {
-    die ("Can't login to CGPro: " . $result->{'error'});
-}
-my ($host, undef, undef, undef) = split "::", $loginData;
-
-if ($host =! m/^(localhost|127\.0\.0)/) {
-    $host = $ENV{'SERVER_ADDR'};
-}
 
 my $url, $cgurl;
 if ($ENV{HTTPS} eq 'on') {
-    $url = "https://$host:9100/cgi-bin/login.pl";
-    $cgpurl = "https://$host:9100/";
+    $url = "https://webmail.cmailpro.net/cgi-bin/login.pl";
+    $cgpurl = "https://webmail.cmailpro.net/";
 } else {
-    $url = "http://$host:8100/cgi-bin/login.pl";
-    $cgpurl = "http://$host:8100/";
+    $url = "http://webmail.cmailpro.net/cgi-bin/login.pl";
+    $cgpurl = "http://webmail.cmailpro.net/";
 }
-use Data::Dumper;
+
 print <<EOF
 	  <html>
 	    <head>
