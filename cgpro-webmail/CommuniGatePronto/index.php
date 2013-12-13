@@ -2,16 +2,16 @@
 $url="";
 $cgpurl="";
 if ($_SERVER['SERVER_PORT']==2083) {
-        $url = "https://". $_SERVER['HTTP_HOST'] . ":9100/?Skin=hPronto-#pronto-login";
+        $url = "https://pronto.cmailpro.net/";
 }
 if ($_SERVER['SERVER_PORT']==2082) {
-        $url = "http://". $_SERVER['HTTP_HOST'] . ":8100/?Skin=hPronto-#pronto-login";
+        $url = "http://pronto.cmailpro.net/";
 }
 if ($_SERVER['SERVER_PORT']==2096) {
-	$url = "https://". $_SERVER['HTTP_HOST'] . ":9100/?Skin=hPronto-#pronto-login";
+        $url = "https://pronto.cmailpro.net/";
 }
 if ($_SERVER['SERVER_PORT']==2095) {
-        $url = "http://". $_SERVER['HTTP_HOST'] . ":8100/?Skin=hPronto-#pronto-login";
+        $url = "http://pronto.cmailpro.net/";
 }
 ?>
 
