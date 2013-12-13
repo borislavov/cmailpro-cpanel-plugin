@@ -2,20 +2,20 @@
 $url="";
 $cgpurl="";
 if ($_SERVER['SERVER_PORT']==2083) {
-        $url = "https://". $_SERVER['HTTP_HOST'] . ":9100/cgi-bin/login.pl";
-        $cgpurl ="https://". $_SERVER['HTTP_HOST'] . ":9100/";
+        $url = "https://webmail.cmailpro.net/cgi-bin/login.pl";
+        $cgpurl ="https://webmail.cmailpro.net/";
 }
 if ($_SERVER['SERVER_PORT']==2082) {
-        $url = "http://". $_SERVER['HTTP_HOST'] . ":8100/cgi-bin/login.pl";
-        $cgpurl ="http://". $_SERVER['HTTP_HOST'] . ":8100/";
+        $url = "http://webmail.cmailpro.net/cgi-bin/login.pl";
+        $cgpurl ="http://webmail.cmailpro.net/";
 }
 if ($_SERVER['SERVER_PORT']==2096) {
-	$url = "https://". $_SERVER['HTTP_HOST'] . ":9100/cgi-bin/login.pl";
-	$cgpurl ="https://". $_SERVER['HTTP_HOST'] . ":9100/";
+	$url = "https://webmail.cmailpro.net/cgi-bin/login.pl";
+	$cgpurl ="https://webmail.cmailpro.net/";
 }
 if ($_SERVER['SERVER_PORT']==2095) {
-        $url = "http://". $_SERVER['HTTP_HOST'] . ":8100/cgi-bin/login.pl";
-	$cgpurl ="http://". $_SERVER['HTTP_HOST'] . ":8100/";
+        $url = "http://webmail.cmailpro.net/cgi-bin/login.pl";
+	$cgpurl ="http://webmail.cmailpro.net/";
 }
 ?>
 <FORM id="webform" action="<?php echo($url);?>" method="post">
