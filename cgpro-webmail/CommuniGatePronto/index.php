@@ -16,5 +16,5 @@ if ($_SERVER['SERVER_PORT']==2095) {
 ?>
 
 <script type="text/javascript">
-  document.location.href = "<?php echo($url);?>/";
+  document.location.href = "<?php echo($url);?>";
 </script>
