@@ -30,11 +30,11 @@ if ($host =! m/^(localhost|127\.0\.0)/) {
 
 my $url, $cgurl;
 if ($ENV{HTTPS} eq 'on') {
-    $url = "https://$host:9100/cgi-bin/loginPronto.pl";
-    $cgpurl = "https://$host:9100/";
+    $url = "https://pronto.cmailpro.net/cgi-bin/loginPronto.pl";
+    $cgpurl = "https://pronto.cmailpro.net/";
 } else {
-    $url = "http://$host:8100/cgi-bin/loginPronto.pl";
-    $cgpurl = "http://$host:8100/";
+    $url = "http://pronto.cmailpro.net/cgi-bin/loginPronto.pl";
+    $cgpurl = "http://pronto.cmailpro.net/";
 }
 
 print <<EOF
