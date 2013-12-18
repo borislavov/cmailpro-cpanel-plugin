@@ -22,11 +22,6 @@ if ( defined( $result->{'data'} ) ) {
 } else {
     die ("Can't login to CGPro: " . $result->{'error'});
 }
-my ($host, undef, undef, undef) = split "::", $loginData;
-
-if ($host =! m/^(localhost|127\.0\.0)/) {
-    $host = $ENV{'SERVER_ADDR'};
-}
 
 my $url, $cgurl;
 if ($ENV{HTTPS} eq 'on') {
