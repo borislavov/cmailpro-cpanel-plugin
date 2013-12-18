@@ -12,9 +12,9 @@ if (! -f '/var/cpanel/features/default' ) {
     close(FO);
 }
 my @stop_features = ();
-@stop_features = grep {/^(cgpro|itoolabs)\_/} @addonfeatures;
 my @feature_lists = Cpanel::Features::get_feature_lists();
 my @addonfeatures = Cpanel::Features::load_addon_feature_names();
+@stop_features = grep {/^(cgpro|itoolabs)\_/} @addonfeatures;
 foreach my $feature_list_name (@feature_lists) {
     if ($feature_list_name ne 'disabled') {
 	foreach my $feature (@stop_features) {
