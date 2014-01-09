@@ -15,15 +15,28 @@ my @stop_features = ();
 my @feature_lists = Cpanel::Features::get_feature_lists();
 my @addonfeatures = Cpanel::Features::load_addon_feature_names();
 @stop_features = grep {/^(cgpro|itoolabs)\_/} @addonfeatures;
+my @cmail_stop_features = grep {/^noncgpro\_/} @addonfeatures;
 foreach my $feature_list_name (@feature_lists) {
     if ($feature_list_name ne 'disabled') {
+	next if $feature_list_name =~ m/\-cMailPro$/;
+	unless (-f "/var/cpanel/features/" . $feature_list_name . "-cMailPro") {
+	    system("cp","/var/cpanel/features/" . $feature_list_name, "/var/cpanel/features/" . $feature_list_name . "-cMailPro");
+	    foreach my $feature (@cmail_stop_features) {
+		Cpanel::Features::modify_feature((
+		    'feature' => $feature,
+		    'value' => '0',
+		    'list' => $feature_list_name . "-cMailPro"
+						 ));
+		print "Stopping feature \"" . $feature . "\" in \"".$feature_list_name."-cMailPro\" by default\n";
+	    }
+	}
 	foreach my $feature (@stop_features) {
 	    Cpanel::Features::modify_feature((
-		'feature' => $feature,
-		'value' => '0',
-		'list' => $feature_list_name
-					     ));
-	    print "Stopping default \"" . $feature . "\" in \"".$feature_list_name."\" by default\n";
+	    	'feature' => $feature,
+	    	'value' => '0',
+	    	'list' => $feature_list_name
+	    				     ));
+	    print "Stopping feature \"" . $feature . "\" in \"".$feature_list_name."\" by default\n";
 	}
     }
 }
