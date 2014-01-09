@@ -9,6 +9,7 @@ use Whostmgr::HTMLInterface ();
 use Whostmgr::ACLS          ();
 use Cpanel::API::Branding        ();
 use LWP::UserAgent;
+use JSON;
 
 $VERSION = '3.0.2-1';
 
@@ -19,38 +20,59 @@ Whostmgr::HTMLInterface::defheader( "CGPro Update Manager",'', '/cgi/addon_cgpro
 my $ua = LWP::UserAgent->new;
 $ua->timeout(10);
 
-my $response = $ua->get('https://raw.github.com/webfacebg/communigate-cpanel-adaptor/master/LatestVersion');
+my $response = $ua->get('https://api.github.com/repos/borislavov/cmailpro-cpanel-plugin/commits');
 
 if ($response->is_success) {
-    my $newversion = $response->decoded_content;  # or whatever
-    $newversion =~ s/Version:\s+(\S+)/$1/;
-    chomp $newversion;
-    $newversion =~ s/\s+//;
-    if ($newversion eq $VERSION) {
-	print "<p>Communigate Cpanel Adaptor is up to date (Version: $VERSION)</p>";
-    } else {
-	my %FORM = Cpanel::Form::parseform();
-	if ($FORM{'upgrade'}) {
-	    print "<h2>Downloading files</h2>";
-	    print "<pre>\n";
-	    $response = $ua->get("https://github.com/webfacebg/communigate-cpanel-adaptor/archive/v$newversion.tar.gz", ':content_file' => "/usr/src/CommuniGate-cPanel-adaptor-$newversion.tar.gz");
-	    if ($response->is_success) {
-		print "Download successful. '/usr/src/CommuniGate-cPanel-adaptor-$newversion.tar.gz' \n";
-		if ( -d '/usr/src/communigate-cpanel-adaptor' ) {
-		    system("rm -rf /usr/src/communigate-cpanel-adaptor");
-		}
-		print "Extracting files...\n";
-		system ("cd /usr/src ; tar -xzf  /usr/src/CommuniGate-cPanel-adaptor-$newversion.tar.gz; cd communigate-cpanel-adaptor-$newversion; /bin/bash ./upgrade.sh");
-	    } else {
-		print "Error while downloading package: <em>" . $response->status_line . "</em>";
+    my $commits_json = $response->decoded_content;  # or whatever
+    my $commits = decode_json $commits_json;
+    my $commit_date = $commits->[0]->{commit}->{committer}->{date};
+    my $commit_sha = $commits->[0]->{sha};
+    # print $commit_sha;
+    my $current_version = "Unknown";
+    if (-f "/var/cpanel/cmailproVersion") {
+	open(FI, "<", "/var/cpanel/cmailproVersion");
+	$current_version = <FI>;
+	close(FI);
+    }
+    print <<EOF
+    <table summary="versions" cellpadding="5">
+      <tr>
+	<td><strong>Curent Version</strong></td>
+	<td><code>$current_version</code>
+	</td>
+      </tr>
+      <tr>
+	<td><strong>Available version</strong></td>
+	<td><code>$commit_sha ($commit_date)</code>
+	</td>
+      </tr>
+    </table>
+
+EOF
+;
+    my %FORM = Cpanel::Form::parseform();
+    if ($FORM{'upgrade'}) {
+	print "<h2>Downloading files</h2>";
+	print "<pre>\n";
+	$response = $ua->get("https://github.com/borislavov/cmailpro-cpanel-plugin/archive/master.tar.gz", ':content_file' => "/usr/src/cmailpro-cpanel-plugin-master-$commit_sha.tar.gz");
+	if ($response->is_success) {
+	    print "Download successful. '/usr/src/cmailpro-cpanel-plugin-master-$commit_sha.tar.gz' \n";
+	    if ( -d '/usr/src/cmailpro-cpanel-plugin-master' ) {
+		system("rm -rf /usr/src/cmailpro-cpanel-plugin-master");
 	    }
-	    print "</pre>\n";
+	    print "Extracting files...\n";
+	    system ("cd /usr/src ; tar -xzf /usr/src/cmailpro-cpanel-plugin-master-$commit_sha.tar.gz; cd cmailpro-cpanel-plugin-master; /bin/bash ./upgrade.sh");
+	    open(FO, ">", "/var/cpanel/cmailproVersion");
+	    print FO "$commit_sha ($commit_date)";
+	    close(FO);
 	} else {
-	    print "<p>New version of CommuniGate cPanel adaptor is avaliable:<strong> $newversion</strong>. Your current Version is $VERSION</p>";
-	    print '<form action="" method="post">';
-	    print '<input type="submit" value="Upgrade Now!" name="upgrade" />';
-	    print '</form>';
+	    print "Error while downloading package: <em>" . $response->status_line . "</em>";
 	}
+	print "</pre>\n";
+    } else {
+	print '<form action="" method="post">';
+	print '<input type="submit" value="Upgrade Now!" name="upgrade" />';
+	print '</form>';
     }
 } else {
     print "<p>Cannot get version from server: <em>" . $response->status_line . "</em></p>";
