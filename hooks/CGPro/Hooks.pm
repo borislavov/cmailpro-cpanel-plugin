@@ -480,7 +480,7 @@ sub check_hooked_account {
 	return 1 if defined $accounts[0];
 	return 0;
     } else {
-	return 1;
+	return 0;
     }
 }
 
