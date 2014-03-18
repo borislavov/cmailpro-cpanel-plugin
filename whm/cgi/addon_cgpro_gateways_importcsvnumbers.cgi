@@ -53,22 +53,10 @@ if (-f $file && $FORM{provider}) {
     for my $row (@{$csvdata->{data}}) {
 	my ($telnum, $host, $username, $authname, $authpass, $expires) = @$row;
 	$expires = convertTime($expires);
-	$telnum =~ s/\D//g;
 	next unless $telnum;
-	# Creating Forwarders
-	$cli->DeleteForwarder("tn-" . $telnum . '@central.telnum');
-	$cli->CreateForwarder("tn-" . $telnum . '@central.telnum', 'tn-' . $telnum . '@' . $domain );
-	# i-35930198900 -> antonkatsarov@anton.bg.local
-	$cli->DeleteForwarder("gwin-$id-" . $FROM{telnum} . '@' . $domain);
-	$cli->DeleteForwarder("i-" . $telnum . '@' . $domain);
-	$cli->CreateForwarder("i-" . $telnum . '@' . $domain, $FORM{provider} . '@null.local' );
-
-	$cli->DeleteForwarder("tn-" . $telnum . '@' . $domain);
-	$cli->CreateForwarder("tn-" . $telnum . '@' . $domain, 'null');
-	
 	if ($gateways->{$FORM{provider}}->{callInGw}->{proxyType} eq 'director') {
 	    $gateways->{$FORM{provider}}->{callInGw}->{telnums} = [] unless $gateways->{$FORM{provider}}->{callInGw}->{telnums};
-	    push @{$gateways->{$FORM{provider}}->{callInGw}->{telnums}}, {'telnum' => $FORM->{telnum}};
+	    push @{$gateways->{$FORM{provider}}->{callInGw}->{telnums}}, {'telnum' => $telnum};
 	}
 	if ($gateways->{$FORM{provider}}->{callInGw}->{proxyType} eq 'registrar') {
 	    $gateways->{$FORM{provider}}->{callInGw}->{telnums} = [] unless $gateways->{$FORM{provider}}->{callInGw}->{telnums};
@@ -81,7 +69,6 @@ if (-f $file && $FORM{provider}) {
 		'username' => ($username || undef),
 		'domain' => ($host || undef),
 		'reguid' => $uin,
-		'server' => undef,
 		'expires' => ($expires || undef)
 	    };
 	    if ($tels->{$telnum}->{reguid}) {
@@ -91,17 +78,6 @@ if (-f $file && $FORM{provider}) {
 	    } else {
 		push @{$gateways->{$FORM{provider}}->{callInGw}->{telnums}}, $values;
 	    }
-	    my $rsips = $cli->GetAccountRSIPs('pbx@' . $domain);
-	    $rsips->{'rsip-' . $id . '-' . $uin } = {
-		domain => $host || '',
-		fromName => $username || '',
-		targetName => $telnum || '',
-		gwid => $id,
-		period => $expires || '30m',
-		authName => $authname || '',
-		password => $authpass || '',
-	    };
-	    $cli->SetAccountRSIPs('pbx@' . $domain, $rsips);
 	}
 
     }
