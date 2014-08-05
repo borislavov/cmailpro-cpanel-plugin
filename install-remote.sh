@@ -81,7 +81,7 @@ cp -rf ${PACKSRC}/hooks/CGPro /var/cpanel/perl5/lib/
 /usr/local/cpanel/bin/manage_hooks add module CGPro::Hooks
 
 #Install config files
-cp ${PACKSRC}/etc/cpanel_cgpro.conf /var/cpanel/communigate.yaml
+# cp ${PACKSRC}/etc/cpanel_cgpro.conf /var/cpanel/communigate.yaml
 
 chmod 600 /var/cpanel/communigate.yaml
 if [ ! -d /var/cpanel/cgpro/ ]
