@@ -1,5 +1,7 @@
 [%
+ USE Api2;
  SET account = CPANEL.get_raw_form('account');
+ SET host = Api2.exec('CommuniGate','getCGProServer', {} ).0;
 %]
 
 <h2>Setup</h2>
@@ -21,7 +23,7 @@
     <tr>
       <td>Server:</td>
       <td class="data">
-	<strong>mail.[% account.split('@').1 %]:443</strong>
+      	<strong>[% host %]:443</strong>
       </td>
     </tr>
     <tr>
@@ -49,7 +51,7 @@
     <tr>
       <td>Server:</td>
       <td class="data">
-	<strong>mail.[% account.split('@').1 %]:80</strong>
+      	<strong>[% host %]:80</strong>
       </td>
     </tr>
     <tr>

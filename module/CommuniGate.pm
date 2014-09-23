@@ -67,6 +67,7 @@ sub getCLI {
 	unless($cli) {
 	    $logger->warn("Can't login to CGPro: ".$CGP::ERR_STRING);
 	}
+	$cli->{loginData} = \@loginData;
 	$CLI = $cli;
 	return $cli;
     }
@@ -4963,6 +4964,13 @@ sub api2_UnsetAccountPSTN {
     }
     $cli->Logout();
     return $result;
+}
+
+sub api2_getCGProServer {
+    my $cli = getCLI();
+    my $loginData = $cli->{loginData};
+    $cli->Logout();
+    return $loginData->[0];
 }
 
 sub versioncmp( $$ ) {
