@@ -21,6 +21,7 @@ use Time::Local  'timelocal_nocheck';
 use Digest::MD5 qw(md5_hex);
 use XIMSS;
 use Cpanel::CPAN::MIME::Base64::Perl qw(decode_base64 encode_base64);
+use Cpanel::Version;
 use URI::Escape;
 
 require Exporter;
@@ -40,23 +41,16 @@ sub getCLI {
 	return $CLI;
     } else {
 	my $loginData;
-	my $version = `$^X -V`;
-	$version =~ s/^\D*(\d+\.\d+).*?$/$1/;
-	if ($version < 11.38) {
-	    $loginData = Cpanel::AdminBin::adminrun('cca', 'GETLOGIN');
-	    $loginData =~ s/^\.\n//;
+	my $result = Cpanel::Wrap::send_cpwrapd_request(
+	    'namespace' => 'CGPro',
+	    'module'    => 'cca',
+	    'function'  => 'GETLOGIN',
+	    'data' =>  $Cpanel::CPDATA{'USER'}
+	    );
+	if ( defined( $result->{'data'} ) ) {
+	    $loginData = $result->{'data'};
 	} else {
-	    my $result = Cpanel::Wrap::send_cpwrapd_request(
-		'namespace' => 'CGPro',
-		'module'    => 'cca',
-		'function'  => 'GETLOGIN',
-		'data' =>  $Cpanel::CPDATA{'USER'}
-		);
-	    if ( defined( $result->{'data'} ) ) {
-		$loginData = $result->{'data'};
-	    } else {
-		$logger->warn("Can't login to CGPro: " . $result->{'error'});
-	    }
+	    $logger->warn("Can't login to CGPro: " . $result->{'error'});
 	}
 	my @loginData = split "::", $loginData;
  	my $cli = new CGP::CLI( { PeerAddr => $loginData[0],
@@ -547,18 +541,29 @@ sub addforward {
 	} else {
 	    # IF forwarding TO local account
 	    if ($cli->GetAccountSettings("$fwdemail")) {
-		my $aliases = $cli->GetAccountAliases("$fwdemail");
-		my $found = 0;
-		for my $alias (@$aliases) {
-		    $found = 1 if "$alias" eq "$user";
-		}
-		push @$aliases, "$user" unless $found;
-		my $aliases = $cli->SetAccountAliases($fwdemail, $aliases);
-		my $error_msg = $cli->getErrMessage();
-		if ($error_msg eq "OK") {
-		    push( @result, { email => "$user\@$domain", forward => "$fwdemail", domain => "$domain" } );
+		my (undef, $fwdDomain) = split "@", $fwdemail;
+		if ($fwdDomain eq $domain) {
+		    my $aliases = $cli->GetAccountAliases("$fwdemail");
+		    my $found = 0;
+		    for my $alias (@$aliases) {
+			$found = 1 if "$alias" eq "$user";
+		    }
+		    push @$aliases, "$user" unless $found;
+		    my $aliases = $cli->SetAccountAliases($fwdemail, $aliases);
+		    my $error_msg = $cli->getErrMessage();
+		    if ($error_msg eq "OK") {
+			push( @result, { email => "$user\@$domain", forward => "$fwdemail", domain => "$domain" } );
+		    } else {
+			$Cpanel::CPERROR{'CommuniGate'} = $error_msg;
+		    }
 		} else {
-		    $Cpanel::CPERROR{'CommuniGate'} = $error_msg;
+		    $cli->CreateForwarder("$user\@$domain", "$fwdemail");
+		    my $error_msg = $cli->getErrMessage();
+		    if ($error_msg eq "OK") {
+			push( @result, { email => "$user\@$domain", forward => "$fwdemail", domain => "$domain" } );
+		    } else {
+			$Cpanel::CPERROR{'CommuniGate'} = $error_msg;
+		    }
 		}
             # IF forwarding to NON local acount
 	    } else {
@@ -721,7 +726,7 @@ sub api2_ListExtensions {
       }
   }
   $cli->Logout();
-  return {extensions => \@result};
+  return @result;
 }
 
 sub api2_AssignExtension {
@@ -775,30 +780,36 @@ sub api2_AssignExtension {
   $result->{"classes"} = $defaults->{"ServiceClasses"};
   foreach my $domain (@domains) {
       my $accounts = $cli->ListAccounts($domain);
-      foreach my $userName (sort keys %$accounts) {
-  	  my $account = $cli->GetAccountSettings("$userName\@$domain");
-  	  $result->{"accounts"}->{"$userName\@$domain"}->{details} = $account;
+      if ($accounts) {
+	  foreach my $userName (sort keys %$accounts) {
+	      my $account = $cli->GetAccountSettings("$userName\@$domain");
+	      $result->{"accounts"}->{"$userName\@$domain"}->{details} = $account;
+	  }
       }
       my $groups = $cli->ListGroups($domain);
-      foreach my $groupName (sort @$groups) {
-  	  next if $groupName =~ m/^activequeuegroup\_/i;
-  	  my $details = $cli->GetGroup("$groupName\@$domain");
-  	  $result->{'departments'} = [] unless $result->{'departments'};
-  	  push @{$result->{'departments'}}, "$groupName\@$domain" unless (defined($details->{SignalDisabled}) && $details->{SignalDisabled} eq "YES");
+      if ($groups) {
+	  foreach my $groupName (sort @$groups) {
+	      next if $groupName =~ m/^activequeuegroup\_/i;
+	      my $details = $cli->GetGroup("$groupName\@$domain");
+	      $result->{'departments'} = [] unless $result->{'departments'};
+	      push @{$result->{'departments'}}, "$groupName\@$domain" unless (defined($details->{SignalDisabled}) && $details->{SignalDisabled} eq "YES");
 
+	  }
       }
       my $forwarders = $cli->ListForwarders($domain);
-      foreach my $forwarder (sort @$forwarders) {
-  	  if ($forwarder =~ /^activequeue\_/) {
-  	      my $name = "";
-  	      my $to = $cli->GetForwarder("$forwarder\@$domain");
-  	      $to =~ s/activequeue\{(.*?)\}\#.*?$/$1/;
-  	      (undef, $name, undef) = split ",", $to;
-  	      ($name, undef) = split '@', $to unless $name;
-  	      my $toggle = $forwarder;
-  	      $toggle =~ s/activequeue/activequeuetoggle/i;
-  	      push @{$result->{'queues'}}, {value => "$forwarder\@$domain", toggle => "$toggle\@$domain", name => "$name\@$domain"};
-  	  }
+      if ($forwarders) {
+	  foreach my $forwarder (sort @$forwarders) {
+	      if ($forwarder =~ /^activequeue\_/) {
+		  my $name = "";
+		  my $to = $cli->GetForwarder("$forwarder\@$domain");
+		  $to =~ s/activequeue\{(.*?)\}\#.*?$/$1/;
+		  (undef, $name, undef) = split ",", $to;
+		  ($name, undef) = split '@', $to unless $name;
+		  my $toggle = $forwarder;
+		  $toggle =~ s/activequeue/activequeuetoggle/i;
+		  push @{$result->{'queues'}}, {value => "$forwarder\@$domain", toggle => "$toggle\@$domain", name => "$name\@$domain"};
+	      }
+	  }
       }
       my $prefs = $cli->GetAccountPrefs("ivr\@$domain");
       if ($prefs && $prefs->{IVRMenus}) {
@@ -916,21 +927,32 @@ sub api2_delforward {
 	    $Cpanel::CPERROR{'CommuniGate'} = $error_msg;
 	  }
 	} else {
-	  # IF forwarding TO local account
-	  if ($cli->GetAccountSettings("$fwdemail")) {
-	    my $aliases = $cli->GetAccountAliases("$fwdemail");
-	    my $newaliases = [];
-	    my ($thealias, undef) = split "@", $user;
-	    for my $alias (@$aliases) {
-	      push @$newaliases, $alias unless $alias eq $thealias;
-	    }
-	    $cli->SetAccountAliases("$fwdemail", $newaliases);
-	    my $error_msg = $cli->getErrMessage();
-	    if ($error_msg eq "OK") {
-	      push( @result, { email => "$user", forward => "$fwdemail"} );
-	    } else {
-	      $Cpanel::CPERROR{'CommuniGate'} = $error_msg;
-	    }
+	    # IF forwarding TO local account
+	    if ($cli->GetAccountSettings("$fwdemail")) {
+		my (undef, $fwdDomain) = split "@", $fwdemail;
+		if ($fwdDomain eq $domain) {
+		    my $aliases = $cli->GetAccountAliases("$fwdemail");
+		    my $newaliases = [];
+		    my ($thealias, undef) = split "@", $user;
+		    for my $alias (@$aliases) {
+			push @$newaliases, $alias unless $alias eq $thealias;
+		    }
+		    $cli->SetAccountAliases("$fwdemail", $newaliases);
+		    my $error_msg = $cli->getErrMessage();
+		    if ($error_msg eq "OK") {
+			push( @result, { email => "$user", forward => "$fwdemail"} );
+		    } else {
+			$Cpanel::CPERROR{'CommuniGate'} = $error_msg;
+		    }
+		} else {
+		    $cli->DeleteForwarder("$user");
+		    my $error_msg = $cli->getErrMessage();
+		    if ($error_msg eq "OK") {
+			push( @result, { email => "$user", forward => "$fwdemail" } );
+		    } else {
+			$Cpanel::CPERROR{'CommuniGate'} = $error_msg;
+		    }
+		}
             # IF forwarding to NON local acount
 	  } else {
 	    $cli->DeleteForwarder("$user");
@@ -955,8 +977,8 @@ sub api2_ListDefAddress {
 	foreach my $domain (@domains) {
 		my $domaindata = $cli->GetDomainEffectiveSettings("$domain");
                 my $action = @$domaindata{'MailToUnknown'} || '';
-		my $forwardaddress = @$domaindata{'MailRerouteAddress'} || '';
 		my $entry = { domain => "$domain",reject => "",discard =>"",forward=>"",acceptedandbounced =>"" };
+		$entry->{MailRerouteAddress} = @$domaindata{'MailRerouteAddress'} || '';
 		if ($action eq "Rejected") { $entry->{'reject'} = "selected"; }
 		if ($action eq "Discarded") { $entry->{'discard'} = "selected"; }
 		if ($action eq "Rerouted to") { $entry->{'forward'} = "selected"; }
@@ -976,8 +998,8 @@ sub api2_SetDefAddress {
 	my $data = $cli->GetDomainSettings("$domain");
 	$cli->CreateDomain("$domain") unless $data;
 	my $domainData;
-	if ($action eq "CGPDefDiscard") { @$domainData{'MailToUnknown'} = "Discarded"; }
-	if ($action eq "CGPDefReject") { @$domainData{'MailToUnknown'} = "Rejected"; }
+	if ($action eq "CGPDefDiscard") { @$domainData{'MailToUnknown'} = "Discarded"; @$domainData{'MailRerouteAddress'} = "";}
+	if ($action eq "CGPDefReject") { @$domainData{'MailToUnknown'} = "Rejected"; @$domainData{'MailRerouteAddress'} = "";}
 	if ($action eq "CGPDefForward") { @$domainData{'MailToUnknown'} = "Rerouted to"; @$domainData{'MailRerouteAddress'} = "$fwdmail"; }
 	if ($action eq "CGPDefAcceptedAndBounced") { @$domainData{'MailToUnknown'} = "Accepted and Bounced"; }
         $cli->UpdateDomainSettings(domain => $domain,settings => $domainData);
@@ -1243,7 +1265,7 @@ sub AddCGPAccount {
         	$quota .= "M";
 	}
 
-	my $data=$cli->GetDomainSettings("$domain");
+	my $data = $cli->GetDomainSettings("$domain");
 
 	if (!$data) {
         	$cli->CreateDomain("$domain");
@@ -2814,7 +2836,8 @@ sub api2_EditContact {
     my @domains = Cpanel::Email::listmaildomains();
     my $cli = getCLI();
     my $locale = Cpanel::Locale->get_handle();
-    my @return;
+    my @localtime = localtime(time);
+    my $return = {YEAR => ($localtime[5] + 1900)};
     for my $domain (@domains) {
 	if ($domain eq $dom) {
 	    my $password = $cli->GetAccountPlainPassword($account);
@@ -2851,7 +2874,6 @@ sub api2_EditContact {
 			    if ($contact->{'folderMessage'}) {
 				$ximss->send({folderClose => {id => "$time-close", folder=>$OPTS{'box'}}});
 				$ximss->close();
-				my @localtime = localtime(time);
 				$cli->Logout();
 				return {
 				    vcard => $contact->{folderMessage}->{EMail}->{MIME}->{vCard},
@@ -2869,7 +2891,7 @@ sub api2_EditContact {
 	}
     }
     $cli->Logout();
-    return @return;
+    return $return;
 }
 
 sub api2_DoEditContact {
@@ -3838,10 +3860,12 @@ sub api2_AddQueue {
     my $agentExtension;
     for my $domain (@domains) {
 	my $groups = $cli->ListGroups($domain);
-	foreach my $groupName (sort @$groups) {
-	    next if $groupName =~ /^activequeuegroup_/;
-	    my $details = $cli->GetGroup("$groupName\@$domain");
-	    push(@$departments, "$groupName\@$domain") unless (defined($details->{SignalDisabled}) && $details->{SignalDisabled} eq "YES");
+	if ($groups) {
+	    foreach my $groupName (sort @$groups) {
+		next if $groupName =~ /^activequeuegroup_/;
+		my $details = $cli->GetGroup("$groupName\@$domain");
+		push(@$departments, "$groupName\@$domain") unless (defined($details->{SignalDisabled}) && $details->{SignalDisabled} eq "YES");
+	    }
 	}
 	if ($domain eq $dom) {
 	    my $queue = $cli->GetForwarder($OPTS{'queue'});
